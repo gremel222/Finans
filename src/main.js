@@ -1,7 +1,6 @@
 /**
- * main.js — связка этапов T1–T5
+ * main.js — поиск в Википедии и маршрут по правилам (без Cloudflare / ИИ)
  * Точное совпадение → сразу строим + «Не то?»; поиск/значения → ждём выбор.
- * N<5 → упрощённый без LLM; 5≤N<8 → LLM + предупреждение.
  */
 import {
   setStatus, setLoading, showError, hideError, els, t,
@@ -10,7 +9,6 @@ import {
   showStartConfirm, hideStartConfirm,
 } from './ui.js';
 import { buildFallbackRoute } from './fallback.js';
-import { requestValidRoute } from './route.js';
 import * as wiki from './wiki.js';
 
 let currentCtrl = null;
@@ -18,11 +16,6 @@ let runId = 0;
 let rebuildLeft = 3;
 let lastCandidates = [];
 let lastRouteIds = [];
-let lastTopic = '';
-
-function workerUrl() {
-  return (typeof window !== 'undefined' && (window.__WORKER_URL__ || localStorage.getItem('worker_url'))) || '';
-}
 
 async function onceOrRetry(fn, signal, lang) {
   try {
@@ -37,25 +30,14 @@ async function onceOrRetry(fn, signal, lang) {
   }
 }
 
-function makePayload(topic, lang, candidates, excludeIds) {
-  return {
-    topic, level: getLevel(), lang,
-    candidates: candidates.map(c => ({
-      id: c.id, title: c.title, is_start: !!c.is_start,
-      description: (c.description || '').slice(0, 120),
-      extract: (c.extract || '').slice(0, 250),
-      views: c.views || 0, lead_pos: c.lead_pos || 0,
-    })),
-    exclude_ids: excludeIds || [],
-  };
-}
-
-function showSimplified(candidates, lang, excludeIds, extraStatus) {
+function showRoute(candidates, lang, excludeIds) {
   const fb = buildFallbackRoute(candidates, getLevel(), excludeIds || []);
   renderRoute(fb.map(c => ({ id: c.id, why: '', you_will_understand: '' })), candidates, lang, 'simplified');
   lastRouteIds = fb.map(c => c.id);
   updateRebuildButton(rebuildLeft, candidates.length, fb.length);
-  if (extraStatus) setStatus(extraStatus);
+  if (els.routeNote) {
+    els.routeNote.textContent = fb.length < 5 ? `${t(lang, 'found_n')} ${fb.length}` : '';
+  }
 }
 
 async function pipelineFromTitle({ title, topic, lang, signal, alternatives }) {
@@ -73,7 +55,6 @@ async function pipelineFromTitle({ title, topic, lang, signal, alternatives }) {
   if (signal.aborted) return;
 
   lastCandidates = candidates;
-  lastTopic = topic;
   renderCandidates(candidates, lang);
 
   if (els.candidatesWarn) {
@@ -89,38 +70,7 @@ async function pipelineFromTitle({ title, topic, lang, signal, alternatives }) {
     }
   }
 
-  if (candidates.length < 5) {
-    showSimplified(candidates, lang, []);
-    setStatus('');
-    return;
-  }
-
-  try {
-    const res = await requestValidRoute(
-      makePayload(topic, lang, candidates, []),
-      candidates,
-      { signal, workerUrl: workerUrl() },
-    );
-    if (signal.aborted) return;
-    renderRoute(res.route, candidates, lang, res.mode || 'llm');
-    lastRouteIds = res.route.map(v => v.id);
-    updateRebuildButton(rebuildLeft, candidates.length, res.route.length);
-    if (res.route.length < 5) {
-      els.routeNote.textContent = `${t(lang, 'found_n')} ${res.route.length}`;
-    } else {
-      els.routeNote.textContent = '';
-    }
-  } catch (err) {
-    if (signal.aborted) return;
-    if (err.code === 'quota' || err.code === 'unavailable' || err.code === 'no_worker' || err.code === 'too_few') {
-      const msg = err.code === 'no_worker'
-        ? (lang === 'en' ? 'Worker not deployed — simplified route' : 'Worker ещё не задеплоен — упрощённый маршрут')
-        : '';
-      showSimplified(candidates, lang, [], msg);
-    } else if (err.code === 'rate_limited') {
-      showError(t(lang, 'rate_limited'));
-    } else throw err;
-  }
+  showRoute(candidates, lang, []);
   setStatus('');
 }
 
@@ -172,7 +122,6 @@ els.form.addEventListener('submit', async (e) => {
   rebuildLeft = 3;
   lastCandidates = [];
   lastRouteIds = [];
-  lastTopic = topic;
 
   setLoading(true);
   els.candidatesSection.hidden = true;
@@ -205,26 +154,10 @@ els.form.addEventListener('submit', async (e) => {
   }
 });
 
-els.rebuildBtn?.addEventListener('click', async () => {
+els.rebuildBtn?.addEventListener('click', () => {
   if (rebuildLeft <= 0 || !lastCandidates.length) return;
-  const lang = getLang();
-  const signal = currentCtrl?.signal;
   rebuildLeft--;
-  try {
-    const res = await requestValidRoute(
-      makePayload(lastTopic || els.topic.value.trim(), lang, lastCandidates, lastRouteIds),
-      lastCandidates,
-      { signal, workerUrl: workerUrl() },
-    );
-    renderRoute(res.route, lastCandidates, lang, res.mode || 'llm');
-    lastRouteIds = res.route.map(v => v.id);
-    updateRebuildButton(rebuildLeft, lastCandidates.length, res.route.length);
-  } catch (err) {
-    if (err.code === 'quota' || err.code === 'unavailable' || err.code === 'no_worker' || err.code === 'too_few') {
-      showSimplified(lastCandidates, lang, lastRouteIds);
-    } else if (err.code === 'rate_limited') showError(t(lang, 'rate_limited'));
-    else showError(err.message);
-  }
+  showRoute(lastCandidates, getLang(), lastRouteIds);
 });
 
 els.retryBtn?.addEventListener('click', () => {
@@ -250,7 +183,3 @@ els.langHintBtn?.addEventListener('click', () => {
   setLang(getLang() === 'ru' ? 'en' : 'ru');
   showLangHint(null);
 });
-
-if (typeof localStorage !== 'undefined' && localStorage.getItem('worker_url')) {
-  window.__WORKER_URL__ = localStorage.getItem('worker_url');
-}

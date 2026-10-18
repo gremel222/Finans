@@ -1,14 +1,7 @@
-# Секреты и локальное состояние wrangler
-.dev.vars
 .env
-.wrangler/
-
-# Зависимостей нет (сборки нет), но на всякий случай
 node_modules/
 
-# ОС
 .DS_Store
 Thumbs.db
 
-# Фикстуры храним в git (только реальные ответы), логи — нет
 tests/fixtures/*.log

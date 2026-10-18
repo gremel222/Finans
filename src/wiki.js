@@ -4,8 +4,7 @@
  *
  * Из браузера не шлём Api-User-Agent: это не-simple header, Wikipedia
  * не отвечает на CORS-preflight. Идентификация — origin=* + Referer.
- * Node (smoke.mjs) ставит Api-User-Agent. Если появятся 403/429 из браузера —
- * перенести вызовы в Worker (п.5.5 / вопрос 10).
+ * Node (smoke.mjs) ставит Api-User-Agent.
  */
 
 export const API_USER_AGENT = 'WikiNavigator/0.1 (https://github.com/gremel222/wiki-navigator)';

@@ -34,13 +34,9 @@ const DICT = {
     looking_for_article: 'Ищу статью…',
     collecting_concepts: 'Собираю понятия из вступления…',
     building_route: 'Строю маршрут…',
-    rate_limited: 'Слишком много запросов, попробуйте позже.',
-    quota: 'ИИ сегодня недоступен, работает упрощённый режим.',
-    unavailable: 'Сервис временно недоступен. Попробуйте ещё раз или используйте упрощённый режим.',
+    unavailable: 'Что-то пошло не так. Нажмите «Повторить».',
     not_found: 'Тема не найдена. Попробуйте другое написание или смените язык.',
-    banner_llm: 'Режим: ИИ (основная модель)',
-    banner_fallback: 'Режим: запасной ИИ',
-    banner_simplified: 'Упрощённый режим: ИИ сегодня недоступен (лимит). Порядок подобран по правилам, без пояснений.',
+    banner_simplified: 'Порядок статей подобран по уровню: от простого к сложному.',
     why: 'Зачем читать',
     understand: 'Что поймёшь',
     open_article: 'Открыть статью',
@@ -62,13 +58,9 @@ const DICT = {
     looking_for_article: 'Looking for article…',
     collecting_concepts: 'Collecting concepts from lead…',
     building_route: 'Building route…',
-    rate_limited: 'Too many requests, try again later.',
-    quota: 'AI is unavailable today, simplified mode is active.',
-    unavailable: 'Service temporarily unavailable. Try again or use simplified mode.',
+    unavailable: 'Something went wrong. Press Retry.',
     not_found: 'Topic not found. Try another spelling or switch language.',
-    banner_llm: 'Mode: AI (primary)',
-    banner_fallback: 'Mode: AI fallback',
-    banner_simplified: 'Simplified mode: AI unavailable today (quota). Order is heuristic, without explanations.',
+    banner_simplified: 'Article order is chosen by level: from simple to advanced.',
     why: 'Why read',
     understand: 'You will understand',
     open_article: 'Open article',
@@ -218,11 +210,8 @@ export function renderRoute(routeItems, candidates, lang, mode) {
     els.routeList.appendChild(li);
   }
 
-  let bannerText = '';
+  let bannerText = t(lang, 'banner_simplified');
   let bannerClass = 'banner';
-  if (mode === 'llm') bannerText = t(lang, 'banner_llm');
-  else if (mode === 'llm_fallback') bannerText = t(lang, 'banner_fallback');
-  else if (mode === 'simplified') { bannerText = t(lang, 'banner_simplified'); bannerClass = 'banner warn'; }
   if (bannerText) {
     els.routeBanner.textContent = 'ⓘ ' + bannerText;
     els.routeBanner.className = bannerClass;

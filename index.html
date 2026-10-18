@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ru.wikipedia.org https://en.wikipedia.org https://wikimedia.org https://*.workers.dev http://localhost:* http://127.0.0.1:*; img-src https://*.wikipedia.org https://*.wikimedia.org data:; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ru.wikipedia.org https://en.wikipedia.org https://wikimedia.org; img-src https://*.wikipedia.org https://*.wikimedia.org data:; base-uri 'self'; form-action 'self'">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230c6b5c'/%3E%3Cpath d='M9 8.5h14v15H9z' fill='none' stroke='%23fffaf2' stroke-width='1.8'/%3E%3Cpath d='M16 8.5v15M9 13h14' stroke='%23fffaf2' stroke-width='1.8'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -143,17 +143,15 @@
       <li>Находим стартовую статью в Википедии (точное совпадение → поиск, топ-5 на выбор).</li>
       <li>Берём ссылки из вступления статьи = кандидаты.</li>
       <li>Собираем данные кандидатов (описание, вступление, просмотры).</li>
-      <li>Просим бесплатную модель выбрать 5–7 статей по уровню. При исчерпании лимита — упрощённый режим без ИИ.</li>
+      <li>Сортируем 5–7 статей по уровню: новичок — от общего к частному, продвинутый — более узкие темы.</li>
     </ol>
-    <p class="help">Ограничения MVP: маршрут только из ссылок вступления одной статьи; оценка сложности — по краткому описанию.</p>
+    <p class="help">Ограничение: маршрут только из ссылок вступления одной статьи Википедии.</p>
   </section>
 </main>
 
 <footer class="footer">
   <div class="container">
-    <p>Данные: <a href="https://www.wikipedia.org/" target="_blank" rel="noopener noreferrer">Википедия</a>, лицензия <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Маршрут составлен автоматически, пояснения сгенерированы ИИ; не заменяет консультацию врача или юриста.</p>
-    <p id="footer-gemini" hidden>При нагрузке тема запроса может обрабатываться сервисом Google Gemini (бесплатный уровень может использовать запросы для улучшения моделей).</p>
-    <p class="help">Бесплатный пул LLM — десятки–сотни маршрутов в день. При исчерпании показывается упрощённый маршрут. Пул сбрасывается в 00:00 UTC (10:00 по Владивостоку).</p>
+    <p>Данные: <a href="https://www.wikipedia.org/" target="_blank" rel="noopener noreferrer">Википедия</a>, лицензия <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Маршрут составлен автоматически; не заменяет консультацию врача или юриста.</p>
   </div>
 </footer>
 
