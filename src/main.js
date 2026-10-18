@@ -2,7 +2,10 @@
  * main.js — связка этапов, состояние, отмена запросов (T0 каркас)
  * Полный флоу будет в T1–T5, здесь: валидация формы, состояния, мок smoke-проверки.
  */
-import { setStatus, setLoading, showError, hideError, els, t } from './ui.js';
+import {
+  setStatus, setLoading, showError, hideError, els, t,
+  getLang, getLevel, setLang, showLangHint,
+} from './ui.js';
 import { buildFallbackRoute } from './fallback.js';
 
 // Глобальный AbortController для гонок запросов (п.8)
@@ -10,8 +13,6 @@ let currentCtrl = null;
 let rebuildLeft = 3;
 let lastCandidates = [];
 let lastRouteIds = [];
-
-function getLang() { return els.lang.value; }
 
 els.form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -33,7 +34,7 @@ els.form.addEventListener('submit', async (e) => {
   setLoading(true);
   els.candidatesSection.hidden = true;
   els.routeSection.hidden = true;
-  els.startConfirm && (els.startConfirm.hidden = true);
+  if (els.startConfirm) els.startConfirm.hidden = true;
 
   try {
     setStatus(t(lang, 'looking_for_article'));
@@ -57,7 +58,7 @@ els.form.addEventListener('submit', async (e) => {
       warn.textContent = lang === 'en' ? 'Too few candidates — simplified route' : 'Слишком мало кандидатов — упрощённый маршрут';
       warn.hidden = false;
       // сразу fallback без LLM
-      const level = els.level.value;
+      const level = getLevel();
       const route = buildFallbackRoute(candidates, level, []);
       const { renderRoute } = await import('./ui.js');
       renderRoute(route.map(c => ({ id: c.id, why: '', you_will_understand: '' })), candidates, lang, 'simplified');
@@ -67,7 +68,7 @@ els.form.addEventListener('submit', async (e) => {
 
     // Попытка LLM
     const { requestRoute, validateRoute } = await import('./route.js');
-    const level = els.level.value;
+    const level = getLevel();
     const payload = {
       topic, level, lang,
       candidates: candidates.map(c => ({
@@ -88,7 +89,7 @@ els.form.addEventListener('submit', async (e) => {
       updateRebuildButton(rebuildLeft, candidates.length, valid.length);
     } catch (err) {
       if (err.code === 'quota' || err.code === 'unavailable' || err.code === 'no_worker' || err.code === 'too_few') {
-        const level2 = els.level.value;
+        const level2 = getLevel();
         const fb = buildFallbackRoute(candidates, level2, []);
         const { renderRoute } = await import('./ui.js');
         renderRoute(fb.map(c => ({ id: c.id, why: '', you_will_understand: '' })), candidates, lang, 'simplified');
@@ -119,7 +120,7 @@ els.form.addEventListener('submit', async (e) => {
 els.rebuildBtn?.addEventListener('click', async () => {
   if (rebuildLeft <= 0 || !lastCandidates.length) return;
   const lang = getLang();
-  const level = els.level.value;
+  const level = getLevel();
   const signal = currentCtrl?.signal;
   rebuildLeft--;
   try {
@@ -149,16 +150,24 @@ els.retryBtn?.addEventListener('click', () => {
   els.form.requestSubmit();
 });
 
-// Подсказка языка по кириллице (не переключает, только подсказывает — п.7)
-els.topic.addEventListener('input', () => {
+function refreshLangHint() {
   const v = els.topic.value;
   const hasCyr = /[а-яё]/i.test(v);
   const hasLat = /[a-z]/i.test(v);
-  if (hasCyr && !hasLat && els.lang.value !== 'ru') {
-    els.topic.title = 'Похоже, тема на русском — выбран ru, но вы можете сменить язык';
-  } else if (!hasCyr && hasLat && els.lang.value !== 'en') {
-    els.topic.title = 'Looks like English — en is not selected';
-  } else els.topic.title = '';
+  const lang = getLang();
+  if (hasCyr && !hasLat && lang !== 'ru') showLangHint('to_ru');
+  else if (!hasCyr && hasLat && lang !== 'en') showLangHint('to_en');
+  else showLangHint(null);
+}
+
+// Подсказка языка по кириллице (не переключает сама — п.7). На телефоне title не видно, поэтому чип с кнопкой.
+els.topic.addEventListener('input', refreshLangHint);
+for (const radio of document.querySelectorAll('#route-form input[name="lang"]')) {
+  radio.addEventListener('change', refreshLangHint);
+}
+els.langHintBtn?.addEventListener('click', () => {
+  setLang(getLang() === 'ru' ? 'en' : 'ru');
+  showLangHint(null);
 });
 
 // Dev: Worker URL из localStorage

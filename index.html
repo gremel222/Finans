@@ -2,17 +2,37 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Вики-навигатор знаний</title>
 <meta name="description" content="Маршрут изучения темы по статьям Википедии — от простого к сложному.">
+<meta name="theme-color" content="#1a1612" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0c0b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ru.wikipedia.org https://en.wikipedia.org https://wikimedia.org https://*.workers.dev http://localhost:* http://127.0.0.1:*; img-src https://*.wikipedia.org https://*.wikimedia.org data:; base-uri 'self'; form-action 'self'">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230c6b5c'/%3E%3Cpath d='M9 8.5h14v15H9z' fill='none' stroke='%23fffaf2' stroke-width='1.8'/%3E%3Cpath d='M16 8.5v15M9 13h14' stroke='%23fffaf2' stroke-width='1.8'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip" href="#route-form">К форме</a>
+
 <header class="header">
-  <div class="container">
-    <h1>Вики-навигатор знаний</h1>
-    <p class="subtitle">Маршрут из 5–7 статей Википедии от простого к сложному. Введите тему, уровень и язык.</p>
+  <div class="container header-inner">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="36" height="36">
+          <rect width="32" height="32" rx="8" fill="currentColor" opacity=".18"/>
+          <path d="M9 8.5h14v15H9z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M16 8.5v15M9 13h14" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <h1>Вики-навигатор знаний</h1>
+        <p class="subtitle">Маршрут из 5–7 статей Википедии — от простого к сложному</p>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -22,30 +42,33 @@
     <form id="route-form" novalidate>
       <div class="field">
         <label for="topic">Тема <span class="req">*</span></label>
-        <input id="topic" name="topic" type="text" maxlength="100" placeholder="например, Блокчейн" required autocomplete="off" aria-describedby="topic-help">
+        <input id="topic" name="topic" type="text" maxlength="100" placeholder="например, Блокчейн" required autocomplete="off" autocapitalize="sentences" autocorrect="on" spellcheck="true" enterkeyhint="search" inputmode="text" aria-describedby="topic-help">
         <div id="topic-help" class="help">До 100 символов. Можно на русском или английском.</div>
+        <div id="lang-hint" class="lang-hint" hidden>
+          <span id="lang-hint-text"></span>
+          <button type="button" id="lang-hint-btn">Искать на другом языке?</button>
+        </div>
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label for="level">Уровень</label>
-          <select id="level" name="level">
-            <option value="beginner">Новичок</option>
-            <option value="intermediate">Средний</option>
-            <option value="advanced">Продвинутый</option>
-          </select>
+      <fieldset class="seg">
+        <legend>Уровень</legend>
+        <div class="seg-group" role="radiogroup" aria-label="Уровень">
+          <label><input type="radio" name="level" value="beginner" checked> Новичок</label>
+          <label><input type="radio" name="level" value="intermediate"> Средний</label>
+          <label><input type="radio" name="level" value="advanced"> Продвинутый</label>
         </div>
-        <div class="field">
-          <label for="lang">Язык Википедии</label>
-          <select id="lang" name="lang">
-            <option value="ru">Русский (ru)</option>
-            <option value="en">English (en)</option>
-          </select>
+      </fieldset>
+
+      <fieldset class="seg">
+        <legend>Язык Википедии</legend>
+        <div class="seg-group" role="radiogroup" aria-label="Язык Википедии">
+          <label><input type="radio" name="lang" value="ru" checked> Русский</label>
+          <label><input type="radio" name="lang" value="en"> English</label>
         </div>
-      </div>
+      </fieldset>
 
       <div class="actions">
-        <button id="submit-btn" type="submit">Построить маршрут</button>
+        <button id="submit-btn" class="btn-primary" type="submit">Построить маршрут</button>
         <button id="rebuild-btn" type="button" hidden>Перестроить (осталось <span id="rebuild-left">3</span>)</button>
       </div>
     </form>
@@ -53,28 +76,65 @@
     <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <div id="start-confirm" class="start-confirm" hidden>
-      <p id="start-found-text"></p>
+      <p id="start-found-text" class="found-pill"></p>
+      <p class="help" id="start-confirm-help">Если это не та статья — выберите из списка. Иначе продолжаем.</p>
       <div id="start-alternatives" class="alternatives"></div>
-      <p class="help">Если это не та статья — выберите из списка выше. Иначе продолжаем.</p>
     </div>
   </section>
 
-  <section id="candidates-section" class="card" hidden>
-    <h2>Кандидаты <span id="candidates-count"></span></h2>
-    <p id="candidates-warn" class="warn" hidden></p>
-    <ul id="candidates-list" class="list"></ul>
+  <section id="error-section" class="card error" hidden>
+    <p id="error-text"></p>
+    <button id="retry-btn" class="btn-primary" type="button">Повторить</button>
   </section>
 
-  <section id="route-section" class="card" hidden>
+  <section id="route-section" class="card route-wrap" hidden>
     <div id="route-banner" class="banner" hidden></div>
     <h2>Маршрут изучения</h2>
     <ol id="route-list" class="route"></ol>
     <p id="route-note" class="help"></p>
   </section>
 
-  <section id="error-section" class="card error" hidden>
-    <p id="error-text"></p>
-    <button id="retry-btn" type="button">Повторить</button>
+  <section id="preview-section" class="card route-wrap preview-card" aria-label="Пример, как выглядит маршрут">
+    <p class="preview-label">Так выглядит маршрут на телефоне и компьютере</p>
+    <h2>Маршрут изучения <span class="preview-badge">макет</span></h2>
+    <ol class="route">
+      <li class="route-card">
+        <div class="route-num">1</div>
+        <div class="route-body">
+          <h3><a href="https://ru.wikipedia.org/wiki/%D0%91%D0%BB%D0%BE%D0%BA%D1%87%D0%B5%D0%B9%D0%BD" target="_blank" rel="noopener noreferrer">Блокчейн</a></h3>
+          <p class="route-why"><span class="k">Зачем читать</span> Общая картина: что это и зачем придумали цепочку блоков.</p>
+          <p class="route-learn"><span class="k">Что поймёшь</span> Как связаны блоки, хеш и почему запись нельзя тихо поменять.</p>
+          <a class="route-open" href="https://ru.wikipedia.org/wiki/%D0%91%D0%BB%D0%BE%D0%BA%D1%87%D0%B5%D0%B9%D0%BD" target="_blank" rel="noopener noreferrer">Открыть статью</a>
+        </div>
+      </li>
+      <li class="route-card">
+        <div class="route-num">2</div>
+        <div class="route-body">
+          <h3><a href="https://ru.wikipedia.org/wiki/%D0%9A%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B0%D1%8F_%D1%85%D0%B5%D1%88-%D1%84%D1%83%D0%BD%D0%BA%D1%86%D0%B8%D1%8F" target="_blank" rel="noopener noreferrer">Криптографическая хеш-функция</a></h3>
+          <p class="route-why"><span class="k">Зачем читать</span> Без хеша не понять, почему цепочка держится.</p>
+          <p class="route-learn"><span class="k">Что поймёшь</span> Что такое отпечаток данных и лавинный эффект.</p>
+          <a class="route-open" href="https://ru.wikipedia.org/wiki/%D0%9A%D1%80%D0%B8%D0%BF%D1%82%D0%BE%D0%B3%D1%80%D0%B0%D1%84%D0%B8%D1%87%D0%B5%D1%81%D0%BA%D0%B0%D1%8F_%D1%85%D0%B5%D1%88-%D1%84%D1%83%D0%BD%D0%BA%D1%86%D0%B8%D1%8F" target="_blank" rel="noopener noreferrer">Открыть статью</a>
+        </div>
+      </li>
+      <li class="route-card">
+        <div class="route-num">3</div>
+        <div class="route-body">
+          <h3><a href="https://ru.wikipedia.org/wiki/%D0%A0%D0%B0%D1%81%D0%BF%D1%80%D0%B5%D0%B4%D0%BB%D1%91%D0%BD%D0%BD%D1%8B%D0%B9_%D1%80%D0%B5%D0%B5%D1%81%D1%82%D1%80" target="_blank" rel="noopener noreferrer">Распределённый реестр</a></h3>
+          <p class="route-why"><span class="k">Зачем читать</span> Следующий шаг: кто хранит копии и как они сходятся.</p>
+          <p class="route-learn"><span class="k">Что поймёшь</span> Чем реестр на многих узлах отличается от одной базы.</p>
+          <a class="route-open" href="https://ru.wikipedia.org/wiki/%D0%A0%D0%B0%D1%81%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D1%91%D0%BD%D0%BD%D1%8B%D0%B9_%D1%80%D0%B5%D0%B5%D1%81%D1%82%D1%80" target="_blank" rel="noopener noreferrer">Открыть статью</a>
+        </div>
+      </li>
+    </ol>
+    <p class="help">Макет интерфейса. Живой маршрут появится после ввода темы — те же карточки, номера и кнопки «Открыть статью».</p>
+  </section>
+
+  <section id="candidates-section" class="card" hidden>
+    <details class="candidates-details">
+      <summary>Кандидаты <span id="candidates-count"></span></summary>
+      <p id="candidates-warn" class="warn" hidden></p>
+      <ul id="candidates-list" class="list"></ul>
+    </details>
   </section>
 
   <section class="card help-card">
