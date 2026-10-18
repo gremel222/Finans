@@ -88,40 +88,61 @@ function validateSchema(obj) {
   return obj;
 }
 
-export async function run(env, { system, user, schema = JSON_SCHEMA }) {
-  const model = env.WORKERS_AI_MODEL || CONFIG.WORKERS_AI_MODEL;
+function asText(res) {
+  if (typeof res === 'string') return res;
+  if (!res || typeof res !== 'object') return String(res);
+  if (typeof res.response === 'string') return res.response;
+  if (typeof res.output === 'string') return res.output;
+  if (Array.isArray(res.output) && res.output[0]?.content) {
+    const c = res.output[0].content;
+    if (typeof c === 'string') return c;
+    if (Array.isArray(c)) return c.map(x => x.text || '').join('');
+  }
+  return JSON.stringify(res);
+}
+
+function isModelMissing(e) {
+  return /model not found|unknown model|does not exist|no such model/i.test(String(e?.message || e));
+}
+
+function withTimeout(promise, ms) {
+  let t;
+  const timeout = new Promise((_, rej) => {
+    t = setTimeout(() => rej(Object.assign(new Error('timeout'), { code: 'timeout' })), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(t));
+}
+
+export async function run(env, { system, user, schema = JSON_SCHEMA, model }) {
+  const modelId = model || env.WORKERS_AI_MODEL || CONFIG.WORKERS_AI_MODEL;
   const messages = [
     { role: 'system', content: system },
     { role: 'user', content: user },
   ];
+  const ms = CONFIG.WORKERS_AI_TIMEOUT_MS;
+  const maxTokens = CONFIG.WORKERS_AI_MAX_TOKENS;
 
-  // Таймаут 30s
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), CONFIG.WORKERS_AI_TIMEOUT_MS);
-
+  // Способ 1: json_schema
   try {
-    // Способ 1: json_schema
-    try {
-      const res = await env.AI.run(model, {
-        messages,
-        response_format: { type: 'json_schema', json_schema: schema },
-        max_tokens: CONFIG.WORKERS_AI_MAX_TOKENS,
-      }, { signal: ctrl.signal });
-      // Workers AI возвращает по-разному: {response} или строку
-      const text = typeof res === 'string' ? res : (res.response || res.output || JSON.stringify(res));
-      const obj = typeof text === 'string' ? JSON.parse(text) : text;
-      return validateSchema(obj);
-    } catch (e) {
-      // Способ 2: fallback на обычный вызов + парсинг
-      if (String(e.message).includes('model not found') || String(e.message).includes('not found')) throw e;
-      const res2 = await env.AI.run(model, { messages, max_tokens: CONFIG.WORKERS_AI_MAX_TOKENS }, { signal: ctrl.signal });
-      const text2 = typeof res2 === 'string' ? res2 : (res2.response || JSON.stringify(res2));
-      const obj2 = extractJson(text2);
-      return validateSchema(obj2);
-    }
-  } finally {
-    clearTimeout(t);
+    const res = await withTimeout(env.AI.run(modelId, {
+      messages,
+      response_format: { type: 'json_schema', json_schema: schema },
+      max_tokens: maxTokens,
+    }), ms);
+    const text = asText(res);
+    const obj = typeof text === 'string' ? (text.trim().startsWith('{') ? JSON.parse(text) : extractJson(text)) : text;
+    return validateSchema(obj);
+  } catch (e) {
+    if (isModelMissing(e)) throw e;
+    if (e.code === 'timeout') throw e;
   }
+
+  // Способ 2/3: обычный вызов + устойчивый разбор JSON (п.6.3)
+  const res2 = await withTimeout(env.AI.run(modelId, {
+    messages,
+    max_tokens: maxTokens,
+  }), ms);
+  return validateSchema(extractJson(asText(res2)));
 }
 
 export { JSON_SCHEMA };
