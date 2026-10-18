@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вики-навигатор знаний</title>
+<meta name="description" content="Маршрут изучения темы по статьям Википедии — от простого к сложному.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://ru.wikipedia.org https://en.wikipedia.org https://wikimedia.org https://*.workers.dev http://localhost:* http://127.0.0.1:*; img-src https://*.wikipedia.org https://*.wikimedia.org data:; base-uri 'self'; form-action 'self'">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+  <div class="container">
+    <h1>Вики-навигатор знаний</h1>
+    <p class="subtitle">Маршрут из 5–7 статей Википедии от простого к сложному. Введите тему, уровень и язык.</p>
+  </div>
+</header>
+
+<main class="container">
+  <section class="card form-card" aria-labelledby="form-title">
+    <h2 id="form-title">Построить маршрут</h2>
+    <form id="route-form" novalidate>
+      <div class="field">
+        <label for="topic">Тема <span class="req">*</span></label>
+        <input id="topic" name="topic" type="text" maxlength="100" placeholder="например, Блокчейн" required autocomplete="off" aria-describedby="topic-help">
+        <div id="topic-help" class="help">До 100 символов. Можно на русском или английском.</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="level">Уровень</label>
+          <select id="level" name="level">
+            <option value="beginner">Новичок</option>
+            <option value="intermediate">Средний</option>
+            <option value="advanced">Продвинутый</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="lang">Язык Википедии</label>
+          <select id="lang" name="lang">
+            <option value="ru">Русский (ru)</option>
+            <option value="en">English (en)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="submit-btn" type="submit">Построить маршрут</button>
+        <button id="rebuild-btn" type="button" hidden>Перестроить (осталось <span id="rebuild-left">3</span>)</button>
+      </div>
+    </form>
+
+    <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="start-confirm" class="start-confirm" hidden>
+      <p id="start-found-text"></p>
+      <div id="start-alternatives" class="alternatives"></div>
+      <p class="help">Если это не та статья — выберите из списка выше. Иначе продолжаем.</p>
+    </div>
+  </section>
+
+  <section id="candidates-section" class="card" hidden>
+    <h2>Кандидаты <span id="candidates-count"></span></h2>
+    <p id="candidates-warn" class="warn" hidden></p>
+    <ul id="candidates-list" class="list"></ul>
+  </section>
+
+  <section id="route-section" class="card" hidden>
+    <div id="route-banner" class="banner" hidden></div>
+    <h2>Маршрут изучения</h2>
+    <ol id="route-list" class="route"></ol>
+    <p id="route-note" class="help"></p>
+  </section>
+
+  <section id="error-section" class="card error" hidden>
+    <p id="error-text"></p>
+    <button id="retry-btn" type="button">Повторить</button>
+  </section>
+
+  <section class="card help-card">
+    <h2>Как это работает</h2>
+    <ol>
+      <li>Находим стартовую статью в Википедии (точное совпадение → поиск, топ-5 на выбор).</li>
+      <li>Берём ссылки из вступления статьи = кандидаты.</li>
+      <li>Собираем данные кандидатов (описание, вступление, просмотры).</li>
+      <li>Просим бесплатную модель выбрать 5–7 статей по уровню. При исчерпании лимита — упрощённый режим без ИИ.</li>
+    </ol>
+    <p class="help">Ограничения MVP: маршрут только из ссылок вступления одной статьи; оценка сложности — по краткому описанию.</p>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <p>Данные: <a href="https://www.wikipedia.org/" target="_blank" rel="noopener noreferrer">Википедия</a>, лицензия <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ru" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. Маршрут составлен автоматически, пояснения сгенерированы ИИ; не заменяет консультацию врача или юриста.</p>
+    <p id="footer-gemini" hidden>При нагрузке тема запроса может обрабатываться сервисом Google Gemini (бесплатный уровень может использовать запросы для улучшения моделей).</p>
+    <p class="help">Бесплатный пул LLM — десятки–сотни маршрутов в день. При исчерпании показывается упрощённый маршрут. Пул сбрасывается в 00:00 UTC (10:00 по Владивостоку).</p>
+  </div>
+</footer>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

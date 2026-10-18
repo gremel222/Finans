@@ -1,0 +1,15 @@
+# Secrets
+.dev.vars
+.env
+.wrangler/
+.dev.vars
+
+# Deps (нет сборки, но на всякий)
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fixtures – храним, но большие логи игнорируем
+tests/fixtures/*.log
