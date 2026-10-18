@@ -48,3 +48,22 @@ export function validateRoute(rawRoute, candidates) {
   }
   return out;
 }
+
+/**
+ * Вызов Worker + валидация по id. Если осталось <4 — один повтор, затем too_few (п.6.6).
+ */
+export async function requestValidRoute(payload, candidates, opts) {
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await requestRoute(payload, opts);
+      const valid = validateRoute(res.route, candidates);
+      if (valid.length >= 4) return { ...res, route: valid };
+      lastErr = Object.assign(new Error('too_few'), { code: 'too_few' });
+    } catch (e) {
+      if (e.code === 'quota' || e.code === 'rate_limited' || e.code === 'no_worker') throw e;
+      lastErr = e;
+    }
+  }
+  throw lastErr || Object.assign(new Error('too_few'), { code: 'too_few' });
+}

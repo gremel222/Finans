@@ -50,6 +50,13 @@ const DICT = {
     lang_hint_ru: 'Тема похожа на русскую, а выбран English.',
     lang_hint_en: 'Looks like English, but Russian Wikipedia is selected.',
     lang_hint_btn: 'Искать на другом языке?',
+    pick_article: 'Выберите статью:',
+    narrow_topic: 'Тема узкая, маршрут может быть короче.',
+    retrying: 'Повторяю запрос…',
+    timeout: 'Википедия не ответила за 8 секунд. Нажмите «Повторить».',
+    network: 'Нет связи с Википедией. Проверьте интернет и нажмите «Повторить».',
+    too_few_note: 'Найдено меньше 5 статей — упрощённый маршрут.',
+    found_n: 'найдено статей:',
   },
   en: {
     looking_for_article: 'Looking for article…',
@@ -71,6 +78,13 @@ const DICT = {
     lang_hint_ru: 'Тема похожа на русскую, а выбран English.',
     lang_hint_en: 'Looks like English, but Russian Wikipedia is selected.',
     lang_hint_btn: 'Search on other language?',
+    pick_article: 'Pick an article:',
+    narrow_topic: 'Narrow topic — the route may be shorter.',
+    retrying: 'Retrying…',
+    timeout: 'Wikipedia did not respond in 8 seconds. Press Retry.',
+    network: 'Cannot reach Wikipedia. Check the network and press Retry.',
+    too_few_note: 'Fewer than 5 articles — simplified route.',
+    found_n: 'articles found:',
   },
 };
 
@@ -223,13 +237,18 @@ export function renderRoute(routeItems, candidates, lang, mode) {
 
 export function showStartConfirm(foundTitle, alternatives, onSelect, query) {
   const lang = getLang();
-  const q = query ? ` (${t(lang, 'query')}: ${query})` : '';
-  els.startFoundText.textContent = `${t(lang, 'found')}: ${foundTitle}${q}. ${t(lang, 'not_it')}`;
+  if (foundTitle) {
+    const q = query ? ` (${t(lang, 'query')}: ${query})` : '';
+    els.startFoundText.textContent = `${t(lang, 'found')}: ${foundTitle}${q}. ${t(lang, 'not_it')}`;
+  } else {
+    els.startFoundText.textContent = t(lang, 'pick_article');
+  }
   els.startAlternatives.innerHTML = '';
-  for (const alt of alternatives) {
+  for (const alt of alternatives || []) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = alt.title;
+    if (foundTitle && alt.title === foundTitle) btn.setAttribute('aria-current', 'true');
     btn.addEventListener('click', () => onSelect(alt.title));
     els.startAlternatives.appendChild(btn);
   }
