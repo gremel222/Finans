@@ -20,7 +20,7 @@ binding = "AI"
 [vars]
 # Origin — только схема+хост, без пути (поправка v4 п.2)
 # Подставь свой логин: https://<логин>.github.io
-ALLOWED_ORIGINS = "https://<твой_логин>.github.io"
+ALLOWED_ORIGINS = "https://gremel222.github.io"
 # DEV=1 разрешает localhost/127.0.0.1 — только в dev, не в проде
 DEV = "0"
 

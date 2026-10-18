@@ -4,7 +4,7 @@
  * и совместимость с фикстурами smoke.mjs.
  */
 
-export const API_USER_AGENT = 'WikiNavigator/0.1 (https://github.com/<твой_логин>/wiki-navigator)';
+export const API_USER_AGENT = 'WikiNavigator/0.1 (https://github.com/gremel222/wiki-navigator)';
 const CACHE_PREFIX = 'wiki:';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const TIMEOUT_MS = 8000;
