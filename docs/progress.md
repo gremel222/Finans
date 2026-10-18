@@ -1,37 +1,57 @@
 # Прогресс
 
-## T0 — Каркас и проверка среды (в работе, ждёт фикстур)
+## T0 — Каркас и проверка среды (сделано)
 
-**Что сделано (2026-10-18):**
-- Структура по п.9 SPEC: `index.html`, `style.css`, `src/{main,wiki,route,fallback,ui}.js`, `worker/{src/index,src/config,src/providers/*,wrangler.toml}`, `scripts/{smoke,bakeoff}.mjs`, `tests/fixtures/`, `SPEC.md` с поправками v4, `docs/progress.md`.
-- Поправки v4 внесены: сортировка по `lead_pos` (п.12), Origin без пути (п.2), N<5 без LLM (п.13), лимит перестроений 3 (п.21), белый список хостов в прокси (п.10), коды ошибок Worker (п.23), проверка KV-лимитов (п.17).
-- `worker/src/config.js` — единый конфиг моделей/лимитов: `WORKERS_AI_MODEL`, `FALLBACK_MODELS`, `DAILY_LLM_CAP=100`, `IP_RATE_LIMIT=15`, `GEMINI_ENABLED=false`.
-- `worker/src/index.js` — каркас `/route`: валидация входа, проверка Origin (схема+хост), rate-limit/daily-cap заглушки (in-memory до KV), `wrangler tail` логи без IP.
-- `src/wiki.js` — `wikiFetch` с `Api-User-Agent`, TTL 24ч `sessionStorage`, ретраи 1/2/4с, таймаут 8с.
-- `src/fallback.js` — алгоритм п.6.5 для всех уровней.
-- `scripts/smoke.mjs` — реальные запросы п.5.1–5.3 по трём темам, сохраняет `tests/fixtures/ru|en-*.json` и печатает отчёт по `Api-User-Agent`, `extracts`, `description`, `prop=pageviews`.
-- Логин получен: **gremel222**. Подставлен в `src/wiki.js` и `scripts/smoke.mjs` (`Api-User-Agent: WikiNavigator/0.1 (https://github.com/gremel222/wiki-navigator)`), `worker/wrangler.toml` (`ALLOWED_ORIGINS = "https://gremel222.github.io"`), `README.md`.
+См. коммиты `7ee454c`, `44d699d`. Логин `gremel222`. Фикстуры smoke.mjs от человека ещё не получены.
 
-**Как проверено:**
-- `node --check` всех модулей — ок; `index.html` открывается локально (статика без сборки), форма валидирует `topic ≤100`.
-- `node scripts/smoke.mjs` в среде агента: все запросы падают с `fetch failed (ECONNRESET)` — исходящий доступ к `*.wikipedia.org` закрыт, скрипт **не создаёт файлов** и завершается с кодом 1. Это ожидаемо (план Б по п.0): живой прогон делает человек.
-- Код успешного пути `smoke.mjs` проверен на мок-ответах формы `formatversion=2` во временной папке (`/tmp`, не в репозитории): 5/5 шагов, отчёт печатается, файлы пишутся. Мок-данные в `tests/fixtures/` **не попадают**.
+## UI — адаптив iPhone / Android / ПК (сделано)
 
-**Найденная и исправленная ошибка:**
-- В первой версии `smoke.mjs` и `src/wiki.js` заголовок `Api-User-Agent` содержал кириллический плейсхолдер `<твой_логин>`. HTTP-заголовки допускают только ASCII, поэтому `fetch` падал ещё до выхода в сеть: `TypeError: Cannot convert argument to a ByteString`. Исправлено подстановкой логина; добавлена предварительная проверка ASCII в `smoke.mjs` с понятным сообщением, проверка версии Node (≥18), а фикстура теперь сохраняется только при наличии хотя бы одного реального ответа.
+Коммит `61fa7b2`. Mobile-first, safe-area, сегменты уровня/языка, таймлайн маршрута.
 
-**Отклонения от SPEC:**
-- Репозиторий пока называется `Finans` — переименование в `wiki-navigator` делает человек (GitHub → Settings → Repository name), иначе адрес Pages будет `gremel222.github.io/Finans/`. Origin (`https://gremel222.github.io`) от имени репозитория не зависит.
-- Worker в T0 возвращает `503 quota`, чтобы фронт показал упрощённый маршрут — LLM-цепочка появится в T4.
+## T1 — Старт и кандидаты (код готов, живой API — в браузере пользователя)
 
-**UI (без ожидания фикстур):** вёрстка переведена на mobile-first — iPhone (safe-area, 16px в полях, кнопки 48px), Android и ПК. Уровень/язык — сегменты вместо select; маршрут — таймлайн с крупной «Открыть статью»; на странице макет карточек, чтобы сразу видеть вид на телефоне.
+**Что сделано:**
+- `findStartArticle`: точное совпадение + поиск топ-5 параллельно; страница значений и поиск без exact → `needsChoice`.
+- `getLeadCandidates`: ссылки из `<p>` вступления; запас `parse&prop=links` секции 0; затем `prop=links` по статье до 300.
+- `wikiFetch`: таймаут 8 с, ретраи 429/503 1/2/4 с, кэш sessionStorage 24 ч. Из браузера **без** `Api-User-Agent` (CORS-preflight). Node/smoke — с заголовком.
 
-**Следующий шаг — T1** после получения от человека:
-1. ~~Логин GitHub~~ — получен (`gremel222`).
-2. Вывод `node scripts/smoke.mjs` + фикстуры `tests/fixtures/*.json` (приложить файлы).
-3. Подтверждение тем из п.32 (или правки).
+**Как проверено:** `node --test tests/wiki.test.mjs` — разбор HTML, фильтр, точное/dab/поиск (мок формы fv2). Живой Wikipedia из среды агента по-прежнему `ECONNRESET`; проверка на трёх темах ≥12 кандидатов — в браузере превью / `smoke.mjs` у человека.
 
-**Данные для T0 (нужны от владельца):**
+**Отклонения:** фильтр дат/списков применяется уже на этапе ссылок (не только 5.3), чтобы не тратить батчи.
+
+## T2 — Данные кандидатов (код готов)
+
+**Что сделано:**
+- Батчи по 20: extracts + description + pageprops + pageviews.
+- Редиректы `normalized`/`redirects`, дедуп по `pageid`.
+- Фильтр: dab, Список/List of/Хронология/Timeline, годы/века/даты, не-ns0, пустые (стартовую не выкидываем). Страны/города не фильтруем.
+- Обрезка 30: `is_start` → `lead_pos` → `views`.
+- Если ссылок >40 (вся статья): сначала pageviews батчами 50, топ-30, потом описания.
+
+**Как проверено:** юнит-тесты merge/filter/truncate/getCandidateData на мок-форме API. Деградация без views: `sumPageviews(null)=0`, сортировка по lead_pos.
+
+## T3 — Интерфейс без LLM (сделано)
+
+Точное совпадение → сразу сбор + пилюля «Нашли: X (запрос: …). Не то?». Поиск и страница значений → список, ждём клик (квота LLM не тратится). N<5 → упрощённый без Worker. 5≤N<8 или `narrow` → предупреждение. Гонки: AbortController + runId. Таймаут 8 с: один автоповтор, затем «Повторить». Упрощённый маршрут на `fallback.js` (тесты beginner/intermediate/advanced/exclude).
+
+## T4 — Worker и Workers AI (код готов, живой вызов — человек)
+
+Цепочка: `WORKERS_AI_MODEL` → `FALLBACK_MODELS` → Gemini если флаг. JSON schema, иначе extractJson, один повтор на 5xx/таймаут. Origin, IP 15/ч (SHA-256 усечённый, IP не логируется), `DAILY_LLM_CAP=100`. Нет `env.AI` → 503 `unavailable`. Секретов в репо нет. Проверка `curl` — README «Проверка Worker (T4)». Расход нейронов на маршрут ещё не измерен (нужен живой вызов).
+
+## T5 — Маршрут во фронте (сделано)
+
+`requestValidRoute`: валидация по id, выдуманные/дубли отбрасываются, <4 → один повтор → упрощённый. 503 quota/unavailable/no_worker → упрощённый, не ошибка. «Перестроить» с `exclude_ids`, лимит 3.
+
+## T4b / T4c / T6 / T7 / T8
+
+- T4b bake-off — нужен `wrangler` и дневной пул у человека.
+- T4c Gemini — после T5, флаг выкл.
+- T6 — только если T7 покажет <8 кандидатов на ≥3/10 тем.
+- T7 — таблица тем, оценка владельца.
+- T8 — деплой Pages (человек включает Pages).
+
+**Данные от владельца:**
 - [x] Логин GitHub: `gremel222`
 - [ ] Вывод `smoke.mjs` + 3 файла фикстур
-- [ ] Темы T4b/T7: утверждён список из 10+3 стресс или правки
+- [ ] `wrangler login` + проверка curl T4
+- [ ] Переименование Finans → wiki-navigator

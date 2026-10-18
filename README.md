@@ -3,7 +3,9 @@
 > Статический фронт на GitHub Pages + один Cloudflare Worker (`/route`) + бесплатные LLM (Workers AI). Никаких платных сервисов, карта не нужна.
 
 ## Статус
-T0 — каркас. Живой флоу Википедии — с T1. До получения реальных фикстур (`scripts/smoke.mjs`) фронт показывает заглушку.
+T1–T5 в коде: поиск статьи в Википедии, кандидаты из вступления, упрощённый маршрут без ИИ, вызов Worker `/route`. Живой LLM проверяет человек после `wrangler deploy` (см. T4 ниже). В браузере `Api-User-Agent` не ставится (CORS-preflight); идентификация — `origin=*`. Если Википедия начнёт отвечать 403/429 из браузера — перенести запросы в Worker (п.5.5).
+
+Юнит-тесты (без сети): `node --test tests/*.test.mjs`
 
 ## Быстрый старт (локально)
 
@@ -80,7 +82,29 @@ Api-User-Agent: WikiNavigator/0.1 (https://github.com/gremel222/wiki-navigator)
   ...
 ```
 
-**Что прислать агенту:** весь текст из терминала + три файла из `tests/fixtures/` (их можно просто закоммитить: `git add tests/fixtures && git commit -m "fixtures: smoke" && git push`). Без них T1–T2 нельзя считать проверенными.
+**Что прислать агенту:** весь текст из терминала + три файла из `tests/fixtures/` (их можно просто закоммитить: `git add tests/fixtures && git commit -m "fixtures: smoke" && git push`). Без них T1–T2 нельзя считать проверенными на живом API. Юнит-тесты логики (`node --test`) живой API не заменяют.
+
+## Проверка Worker (T4) — делает человек
+
+После `wrangler login` из папки `worker`:
+
+```bash
+cd worker
+npx wrangler dev
+```
+
+В другом терминале (подставьте свой origin, для локального dev в `wrangler.toml` временно `DEV = "1"`):
+
+```bash
+curl -s -D - -X POST http://localhost:8787/route \
+  -H "Content-Type: application/json" \
+  -H "Origin: http://localhost:8000" \
+  -d '{"topic":"Блокчейн","level":"beginner","lang":"ru","exclude_ids":[],"candidates":[{"id":1,"title":"Блокчейн","is_start":true,"description":"реестр","extract":"цепочка блоков","views":1,"lead_pos":0},{"id":2,"title":"Криптография","is_start":false,"description":"шифрование","extract":"наука о шифрах","views":1,"lead_pos":1},{"id":3,"title":"Хеш","is_start":false,"description":"отпечаток","extract":"хеш-функция","views":1,"lead_pos":2},{"id":4,"title":"Ключ","is_start":false,"description":"секрет","extract":"ключ шифрования","views":1,"lead_pos":3},{"id":5,"title":"Сеть","is_start":false,"description":"узлы","extract":"одноранговая сеть","views":1,"lead_pos":4}]}'
+```
+
+Ожидание: `200` и JSON `{ "mode": "llm", "route": [ ... ] }` с id только из 1–5. `topic` длиннее 100 символов → `400`. Частые запросы → `429`. После исчерпания `DAILY_LLM_CAP` → `503 {"error":"quota"}`.
+
+Чтобы фронт ходил в локальный Worker: в консоли браузера `localStorage.setItem('worker_url','http://localhost:8787')` и обновить страницу.
 
 **Если что-то пошло не так:**
 
